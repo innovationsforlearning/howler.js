@@ -50,8 +50,9 @@ Tested in the following browsers/versions:
   * [Options](#options-1)
   * [Methods](#methods-1)
   * [Global Methods](#global-methods-1)
-* [Mobile Playback](#mobile-playback)
+* [Mobile Playback](#mobilechrome-playback)
 * [Dolby Audio Playback](#dolby-audio-playback)
+* [Facebook Instant Games](#facebook-instant-games)
 * [Format Recommendations](#format-recommendations)
 * [License](#license)
 
@@ -74,6 +75,16 @@ In the browser:
       src: ['sound.webm', 'sound.mp3']
     });
 </script>
+```
+
+As a dependency:
+
+```javascript
+import {Howl, Howler} from 'howler';
+```
+
+```javascript
+const {Howl, Howler} = require('howler');
 ```
 
 ### Examples
@@ -148,13 +159,30 @@ sound.fade(1, 0, 1000, id1);
 sound.rate(1.5, id2);
 ```
 
+##### ES6:
+```javascript
+import {Howl, Howler} from 'howler';
+
+// Setup the new Howl.
+const sound = new Howl({
+  src: ['sound.webm', 'sound.mp3']
+});
+
+// Play the sound.
+sound.play();
+
+// Change global volume.
+Howler.volume(0.5);
+```
+
+
 More in-depth examples (with accompanying live demos) can be found in the [examples directory](https://github.com/goldfire/howler.js/tree/master/examples).
 
 
 ## Core
 
 ### Options
-#### src `Array` `[]` *`required`*
+#### src `Array/String` `[]` *`required`*
 The sources to the track(s) to be loaded for the sound (URLs or base64 data URIs). These should be in order of preference, howler.js will automatically load the first one that is compatible with the current browser. If your files have no extensions, you will need to explicitly specify the extension using the `format` property.
 #### volume `Number` `1.0`
 The volume of the specific track, from `0.0` to `1.0`.
@@ -209,6 +237,8 @@ Fires when the sound's playback rate has changed. The first parameter is the ID 
 Fires when the sound has been seeked. The first parameter is the ID of the sound.
 #### onfade `Function`
 Fires when the current sound finishes fading in/out. The first parameter is the ID of the sound.
+#### onunlock `Function`
+Fires when audio has been automatically unlocked through a touch/click event.
 
 
 ### Methods
@@ -264,24 +294,24 @@ Check if a sound is currently playing or not, returns a `Boolean`. If no sound I
 * **id**: `Number` The sound ID to check.
 
 #### duration([id])
-Get the duration of the audio source. Will return 0 until after the `load` event fires.
+Get the duration of the audio source (in seconds). Will return 0 until after the `load` event fires.
 * **id**: `Number` `optional` The sound ID to check. Passing an ID will return the duration of the sprite being played on this instance; otherwise, the full source duration is returned.
 
 #### on(event, function, [id])
 Listen for events. Multiple events can be added by calling this multiple times.
-* **event**: `String` Name of event to fire/set (`load`, `loaderror`, `playerror`, `play`, `end`, `pause`, `stop`, `mute`, `volume`, `rate`, `seek`, `fade`).
+* **event**: `String` Name of event to fire/set (`load`, `loaderror`, `playerror`, `play`, `end`, `pause`, `stop`, `mute`, `volume`, `rate`, `seek`, `fade`, `unlock`).
 * **function**: `Function` Define function to fire on event.
 * **id**: `Number` `optional` Only listen to events for this sound id.
 
 #### once(event, function, [id])
 Same as `on`, but it removes itself after the callback is fired.
-* **event**: `String` Name of event to fire/set (`load`, `loaderror`, `playerror`, `play`, `end`, `pause`, `stop`, `mute`, `volume`, `rate`, `seek`, `fade`).
+* **event**: `String` Name of event to fire/set (`load`, `loaderror`, `playerror`, `play`, `end`, `pause`, `stop`, `mute`, `volume`, `rate`, `seek`, `fade`, `unlock`).
 * **function**: `Function` Define function to fire on event.
 * **id**: `Number` `optional` Only listen to events for this sound id.
 
 #### off(event, [function], [id])
 Remove event listener that you've set. Call without parameters to remove all events.
-* **event**: `String` Name of event (`load`, `loaderror`, `playerror`, `play`, `end`, `pause`, `stop`, `mute`, `volume`, `rate`, `seek`, `fade`).
+* **event**: `String` Name of event (`load`, `loaderror`, `playerror`, `play`, `end`, `pause`, `stop`, `mute`, `volume`, `rate`, `seek`, `fade`, `unlock`).
 * **function**: `Function` `optional` The listener to remove. Omit this to remove all events of type.
 * **id**: `Number` `optional` Only remove events for this sound id.
 
@@ -297,8 +327,10 @@ Unload and destroy a Howl object. This will immediately stop all sounds attached
 `true` if the Web Audio API is available.
 #### noAudio `Boolean`
 `true` if no audio is available.
-#### mobileAutoEnable `Boolean` `true`
-Automatically attempts to enable audio on mobile (iOS, Android, etc) devices.
+#### autoUnlock `Boolean` `true`
+Automatically attempts to enable audio on mobile (iOS, Android, etc) devices and desktop Chrome/Safari.
+#### html5PoolSize `Number` `10`
+Each HTML5 Audio object must be unlocked individually, so we keep a global pool of unlocked nodes to share between all `Howl` instances. This pool gets created on the first user interaction and is set to the size of this property.
 #### autoSuspend `Boolean` `true`
 Automatically suspends the Web Audio AudioContext after 30 seconds of inactivity to decrease processing and energy usage. Automatically resumes upon new playback. Set this property to `false` to disable this behavior.
 #### ctx `Boolean` *`Web Audio Only`*
@@ -399,12 +431,28 @@ Get/set the direction the listener is pointing in the 3D cartesian space. A fron
 * **zUp**: `Number` The z-orientation of the top of the listener.
 
 
-### Mobile Playback
-By default, audio on iOS, Android, etc is locked until a sound is played within a user interaction, and then it plays normally the rest of the page session ([Apple documentation](https://developer.apple.com/library/safari/documentation/audiovideo/conceptual/using_html5_audio_video/PlayingandSynthesizingSounds/PlayingandSynthesizingSounds.html)). The default behavior of howler.js is to attempt to silently unlock audio playback by playing an empty buffer on the first `touchend` event. This behavior can be disabled by calling:
+### Mobile/Chrome Playback
+By default, audio on mobile browsers and Chrome/Safari is locked until a sound is played within a user interaction, and then it plays normally the rest of the page session ([Apple documentation](https://developer.apple.com/library/safari/documentation/audiovideo/conceptual/using_html5_audio_video/PlayingandSynthesizingSounds/PlayingandSynthesizingSounds.html)). The default behavior of howler.js is to attempt to silently unlock audio playback by playing an empty buffer on the first `touchend` event. This behavior can be disabled by calling:
 
 ```javascript
-Howler.mobileAutoEnable = false;
+Howler.autoUnlock = false;
 ```
+
+If you try to play audio automatically on page load, you can listen to a `playerror` event and then wait for the `unlock` event to try and play the audio again:
+
+```javascript
+var sound = new Howl({
+  src: ['sound.webm', 'sound.mp3'],
+  onplayerror: function() {
+    sound.once('unlock', function() {
+      sound.play();
+    });
+  }
+});
+
+sound.play();
+```
+
 
 ### Dolby Audio Playback
 Full support for playback of the Dolby Audio format (currently support in Edge and Safari) is included. However, you must specify that the file you are loading is `dolby` since it is in a `mp4` container.
@@ -415,6 +463,9 @@ var dolbySound = new Howl({
   format: ['dolby', 'webm', 'mp3']
 });
 ```
+
+### Facebook Instant Games
+Howler.js provides audio support for the new [Facebook Instant Games](https://developers.facebook.com/docs/games/instant-games/engine-recommendations) platform. If you encounter any issues while developing for Instant Games, open an issue with the tag `[IG]`.
 
 ### Format Recommendations
 Howler.js supports a wide array of audio codecs that have varying browser support ("mp3", "opus", "ogg", "wav", "aac", "m4a", "mp4", "webm", ...), but if you want full browser coverage you still need to use at least two of them. If your goal is to have the best balance of small filesize and high quality, based on extensive production testing, your best bet is to default to `webm` and fallback to `mp3`. `webm` has nearly full browser coverage with a great combination of compression and quality. You'll need the `mp3` fallback for Internet Explorer.
@@ -429,6 +480,6 @@ ffmpeg -i sound1.wav -dash 1 sound1.webm
 
 ### License
 
-Copyright (c) 2013-2017 [James Simpson](https://twitter.com/GoldFireStudios) and [GoldFire Studios, Inc.](http://goldfirestudios.com)
+Copyright (c) 2013-2019 [James Simpson](https://twitter.com/GoldFireStudios) and [GoldFire Studios, Inc.](http://goldfirestudios.com)
 
 Released under the [MIT License](https://github.com/goldfire/howler.js/blob/master/LICENSE.md).
