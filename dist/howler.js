@@ -564,7 +564,7 @@
       self._volume = o.volume !== undefined ? o.volume : 1;
       self._xhrWithCredentials = o.xhrWithCredentials || false;
       self._timeout = o.timeout || 10000;
-
+      
       // Setup all other default properties.
       self._duration = 0;
       self._state = 'unloaded';
@@ -602,6 +602,8 @@
 
       // If they selected autoplay, add a play event to the load queue.
       if (self._autoplay) {
+        
+     
         self._queue.push({
           event: 'play',
           action: function() {
@@ -2203,7 +2205,7 @@
         self._node.gain.setValueAtTime(volume, Howler.ctx.currentTime);
         self._node.paused = true;
         self._node.connect(Howler.masterGain);
-      } else {
+      } else if (!Howler.noAudio) {
         // Get an unlocked Audio object from the pool.
         self._node = Howler._obtainHtml5Audio();
 
